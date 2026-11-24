@@ -9,6 +9,14 @@ Esta adaptación conserva el procedimiento original. Las menciones a ChatGPT, Co
 
 Usa análisis de datos, HTML/SVG, Python o Node.js cuando estén realmente disponibles. No asumas GPT Images, Remote de Codex, conectores ni un visor integrado. Si no hay ejecución, entrega código, datos y especificación editable, nunca declares una gráfica renderizada o validada sin probarla.
 
+**Mapeo operativo en Antigravity (Windows y Linux, cero cargos adicionales):**
+- **Ejecución estándar con Node.js (`>= 24.10` LTS recomendado):**
+  - Con `node` en `PATH`, `node scripts/graficos.mjs` y `node scripts/consultar-sql.mjs` (con `node:sqlite` integrado) funcionan directamente.
+  - **Motores avanzados, Excel y PNG (`--runtime` / `--raster` / `--exceljs`):** cuando se instale el runtime local en `~/.gemini/antigravity/plugin_data/graficos/runtime` (Linux/macOS) o `%USERPROFILE%\.gemini\antigravity\plugin_data\graficos\runtime` (Windows), pasa esa carpeta en `--runtime` para `entradas-avanzadas.mjs` y `vista-especializada.mjs`, y la subcarpeta `node_modules/@napi-rs/canvas` en `--raster` para exportar PNG. Para `@duckdb/duckdb-wasm@1.32.0`, conserva `apache-arrow@^17.0.0` (`17.0.0`) por compatibilidad de inserción Arrow.
+  - **Manim (`assets/manim/operacion.py`):** ejecútalo con el Python que tenga `manim` instalado (`python -m manim`).
+- **Respaldo portátil sin Node.js (Python `>= 3.11` sin paquetes externos):** si `node` no está disponible, usa `python3 scripts/graficos.py --input <archivo> --out <carpeta>` (`python` en Windows) para generar `panel.html`, `datos.xlsx`, `resumen.pdf`, `grafica.svg`, `diagrama.svg`, `datos.csv`, `analisis.json` y `escena.json` desde JSON/CSV/TSV, y `python3 scripts/consultar-sql.py` para consultas SQLite de solo lectura.
+- **Vista interactiva e imágenes de apoyo:** para vistas interactivas en el chat usa la habilidad integrada `generative_ui` cuando aporte valor, o abre los HTML generados con el subagente `browser`. Cuando una imagen ilustrativa de apoyo esté justificada y cubierta por la cuota de la cuenta sin cargos adicionales, usa el subagente integrado `image-generator` en lugar de GPT Images.
+
 **Recursos pendientes:** Faltan cuatro imágenes originales de marca (dos pares de rutas). Los motores de Plotly y Three.js y el HTML de rebotes ya se recuperaron.
 
 

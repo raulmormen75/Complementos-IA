@@ -1,11 +1,17 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "graficos",
+  "displayName": "Gráficos",
   "version": "0.1.0",
   "description": "Análisis de datos verificables, gráficas, SQL local, matemáticas y tableros editables.",
-  "displayName": "Gráficos",
+  "suggestedPrompts": [
+    "Analiza un archivo CSV o JSON y genera un tablero HTML interactivo con SVG",
+    "Ejecuta una consulta SQL local de solo lectura sobre mis datos y resume hallazgos",
+    "Audita el diseño visual y los indicadores de un tablero o gráfica existente"
+  ],
   "author": {
     "name": "Raul"
   },
-  "repository": "https://github.com/raulmormen75/Complementos-IA"
+  "repository": "https://github.com/raulmormen75/Complementos-IA",
+  "keywords": ["graficos", "datos", "sql", "svg", "tableros", "visualizacion"]
 }
