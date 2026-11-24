@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es-MX">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>Explorador portátil · Gráficos</title>
+<style>
+:root{font:16px/1.5 system-ui,sans-serif;color:#132927;background:#f1f5ee;color-scheme:light}
+*{box-sizing:border-box} [hidden]{display:none!important} body{margin:0}
+main{max-width:980px;margin:auto;padding:clamp(16px,4vw,42px)}
+header{border-bottom:2px solid #187568;padding-bottom:16px} h1,h2{margin:0;line-height:1.2}
+h1{font-size:clamp(1.8rem,6vw,3.15rem)} h2{font-size:1.28rem} p{margin:.6rem 0;overflow-wrap:anywhere}
+section{background:#fff;margin-top:16px;padding:clamp(13px,3vw,25px);border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:.7rem 0}
+label{display:grid;gap:.25rem;min-width:0;flex:1 1 140px;font-weight:650} label.file{flex-basis:240px}
+button,input,select{font:inherit;color:inherit;min-height:44px;border:1px solid #68918b;border-radius:6px;padding:6px 10px;max-width:100%}
+select,input{width:100%;background:#fff} button{cursor:pointer;background:#e5f1eb;font-weight:650}
+button.primary{color:white;background:#12675b;border-color:#12675b} button:disabled{opacity:.5;cursor:auto}
+:focus-visible{outline:3px solid #0b655a;outline-offset:2px} small,.secondary{color:#37514c}
+.total{font-size:clamp(1.7rem,4vw,2.5rem);font-weight:760;margin:0}
+#bars{display:grid;gap:6px;margin-top:12px}.bar-row{display:grid;gap:5px;text-align:left;padding:8px 10px;min-height:54px;width:100%;background:#f8fbf9}
+.bar-row[aria-pressed="true"]{border-color:#12675b;background:#dceddf}.bar-heading{display:flex;justify-content:space-between;gap:12px;overflow-wrap:anywhere}
+.track{height:9px;position:relative;background:#e1ebe6;border-radius:3px}.track span{position:absolute;top:0;bottom:0;background:#187568;border-radius:2px}
+.track .zero{width:1px;background:#526961;z-index:1;border-radius:0}
+.table-frame{overflow:auto;max-height:400px} table{width:100%;border-collapse:collapse} th,td{padding:7px 10px;border-bottom:1px solid #dce7e1;text-align:left;min-width:86px;max-width:280px;overflow-wrap:anywhere} th{background:#e9f2eb;position:sticky;top:0}
+.dataset-source{margin:.1rem 0;color:#37514c}.controls + p{margin-top:.9rem}
+@media(max-width:420px){section{margin-top:12px}.controls{gap:8px}label{flex-basis:100%}}
+</style>
+<main>
+  <header><h1>Explorador portátil</h1><p class="secondary">Abre un archivo local para filtrar, comparar y descargar una gráfica sin conexión.</p></header>
+  <section aria-label="Abrir datos">
+    <div class="controls"><label class="file">Archivo CSV, TSV o JSON<input type="file" id="archivo" accept=".csv,.tsv,.json,text/csv,text/tab-separated-values,application/json"></label><button type="button" id="ejemplo">Probar con un ejemplo</button></div>
+    <p id="aviso" role="status" aria-live="polite"></p>
+  </section>
+  <section id="tablero" hidden aria-label="Gráfica y filtros">
+    <h2 id="titulo"></h2><p id="fuente" class="dataset-source"></p>
+    <div class="controls">
+      <label>Mostrar por<select id="dimension"></select></label>
+      <label>Sumar<select id="medida"></select></label>
+      <label>Columna para filtrar<select id="columna-filtro"></select></label>
+      <label>Valor del filtro<select id="filtro"></select></label>
+      <label>Separador decimal<select id="decimal"><option value=".">Punto (.)</option><option value=",">Coma (,)</option></select></label>
+    </div>
+    <p id="total" class="total" aria-live="polite"></p><p id="recuento" class="secondary"></p>
+    <p id="seleccion" class="secondary"></p><div id="bars" aria-label="Gráfica de barras interactiva"></div>
+    <div class="controls"><button type="button" class="primary" id="descarga-csv">Descargar CSV</button><button type="button" id="descarga-svg">Descargar SVG</button></div>
+  </section>
+  <section id="detalle" hidden aria-label="Registros filtrados">
+    <h2>Registros</h2><p id="detalle-info" class="secondary"></p>
+    <div class="table-frame" tabindex="0" aria-label="Tabla desplazable"><table><thead id="encabezados"></thead><tbody id="filas"></tbody></table></div>
+  </section>
+</main>
+<script>
+'use strict';
+const element = (id) => document.getElementById(id);
+const filePicker = element('archivo');
+const dimension = element('dimension');
+const measure = element('medida');
+const filterColumn = element('columna-filtro');
+const filter = element('filtro');
+const decimal = element('decimal');
+const numberText = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 6 });
+const limits = { bytes: 5 * 1024 * 1024, rows: 20000, columns: 80, categories: 40, details: 100 };
+let dataset, previousDimension, selectedCategory = null, detailRows = [], displayedGroups = [], sequence = 0;
+
+function node(tag, text = '') {
+  const item = document.createElement(tag);
+  item.textContent = text;
+  return item;
+}
+function check(condition, message) { if (!condition) throw new Error(message); }
+function recordValue(value) { return value === null || ['string', 'number', 'boolean'].includes(typeof value); }
+function category(value) { return String(value ?? '') || '(Sin dato)'; }
+function numeric(value, separator) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const text = separator === ',' ? value.trim().replace(',', '.') : value.trim();
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) return null;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
+}
+function sum(values) {
+  let total = 0, correction = 0;
+  for (const value of values) {
+    const adjusted = value - correction;
+    const next = total + adjusted;
+    correction = (next - total) - adjusted;
+    total = next;
+  }
+  check(Number.isFinite(total), 'La suma supera el rango numérico de esta vista.');
+  return total;
+}
+function delimiterFor(text) {
+  const counts = new Map([[',', 0], [';', 0], ['\t', 0]]);
+  let quoted = false;
+  for (const character of text.trimStart()) {
+    if (character === '"') quoted = !quoted;
+    else if (!quoted && /[\r\n]/.test(character)) break;
+    else if (!quoted && counts.has(character)) counts.set(character, counts.get(character) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1])[0][0];
+}
+function parseCsv(text, separator) {
+  const rows = [];
+  let row = [], value = '', state = 'plain';
+  function flushCell() {
+    check(row.length < limits.columns, 'Esta vista admite hasta 80 columnas.');
+    row.push(value); value = ''; state = 'plain';
+  }
+  function flushRow() {
+    flushCell();
+    if (row.some((cell) => cell !== '')) {
+      check(rows.length <= limits.rows, 'Esta vista admite hasta 20,000 registros.');
+      rows.push(row);
+    }
+    row = [];
+  }
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (state === 'quoted') {
+      if (character !== '"') value += character;
+      else if (text[index + 1] !== '"') state = 'closed';
+      else { value += '"'; index += 1; }
+    } else if (character === separator) flushCell();
+    else if (character === '\r' || character === '\n') {
+      if (character === '\r' && text[index + 1] === '\n') index += 1;
+      flushRow();
+    } else if (character === '"' && !value && state === 'plain') state = 'quoted';
+    else {
+      check(character !== '"' && state !== 'closed', 'Hay comillas CSV mal formadas.');
+      value += character;
+    }
+  }
+  check(state !== 'quoted', 'Hay un campo CSV con comillas sin cerrar.');
+  if (row.length || value || state === 'closed') flushRow();
+  const columns = rows.shift()?.map((column) => column.trim());
+  check(columns?.length >= 2 && columns.length <= limits.columns && columns.every(Boolean) && new Set(columns).size === columns.length,
+    'El encabezado debe tener de 2 a 80 columnas con nombres distintos.');
+  return rows.map((row, index) => {
+    check(row.length === columns.length, 'El registro ' + (index + 2) + ' tiene un número distinto de campos al encabezado.');
+    return Object.fromEntries(columns.map((column, field) => [column, row[field]]));
+  });
+}
+function prepare(input, fallbackName) {
+  const { rows } = input;
+  check(Array.isArray(rows) && rows.length > 0 && rows.length <= limits.rows, 'Se requieren entre 1 y 20,000 registros.');
+  const columns = [...new Set(rows.flatMap((row) => {
+    check(row && typeof row === 'object' && !Array.isArray(row) && Object.values(row).every(recordValue), 'Cada registro JSON debe incluir solo valores simples.');
+    return Object.keys(row);
+  }))];
+  check(columns.length >= 2 && columns.length <= limits.columns && columns.every((name) => name.trim()), 'Se requieren de 2 a 80 columnas con nombre.');
+  const separator = input.decimal === ',' ? ',' : '.';
+  const cells = rows.map((row) => columns.map((column) => Object.hasOwn(row, column) ? row[column] : null));
+  const numericColumns = columns.map((name, index) => {
+    const values = cells.slice(0, 200).map((row) => row[index]).filter((value) => value !== null && value !== '');
+    return { name, rate: values.length ? values.filter((value) => numeric(value, separator) !== null).length / values.length : 0 };
+  });
+  const guessedMeasure = numericColumns.find(({ rate }) => rate >= .65)?.name ?? columns[1];
+  const y = columns.includes(input.y) ? input.y : guessedMeasure;
+  const x = columns.includes(input.x) && input.x !== y ? input.x : numericColumns.find(({ name, rate }) => name !== y && rate < .65)?.name ?? columns.find((name) => name !== y);
+  const preferredFilter = [input.group, ...(Array.isArray(input.filters) ? input.filters : [])].find((name) => columns.includes(name) && name !== y);
+  const nonempty = (value, fallback) => typeof value === 'string' && value.trim() ? value.trim() : fallback;
+  return { cells, columns, x, y, preferredFilter, separator, title: nonempty(input.title, fallbackName), source: nonempty(input.source, fallbackName), unit: nonempty(input.unit, '') };
+}
+function choices(control, labels, selected = '', emptyLabel = null) {
+  const options = labels.map((label, index) => {
+    const item = node('option', label);
+    item.value = String(index);
+    return item;
+  });
+  if (emptyLabel) { const empty = node('option', emptyLabel); empty.value = ''; options.unshift(empty); }
+  control.replaceChildren(...options);
+  control.value = labels.includes(selected) ? String(labels.indexOf(selected)) : '';
+}
+function refillFilter() {
+  const index = filterColumn.value === '' ? null : Number(filterColumn.value);
+  const labels = index === null ? [] : [...new Set(dataset.cells.map((row) => category(row[index])))].sort((a, b) => a.localeCompare(b, 'es-MX', { numeric: true }));
+  choices(filter, labels, '', 'Todos los valores');
+  filter.disabled = index === null;
+}
+function openDataset(input, filename) {
+  dataset = prepare(input, filename);
+  selectedCategory = null;
+  previousDimension = undefined;
+  element('titulo').textContent = dataset.title;
+  element('fuente').textContent = 'Fuente · ' + dataset.source;
+  choices(dimension, dataset.columns, dataset.x);
+  choices(measure, dataset.columns, dataset.y);
+  choices(filterColumn, dataset.columns, dataset.preferredFilter, 'Sin filtro');
+  decimal.value = dataset.separator;
+  refillFilter();
+  element('tablero').hidden = false;
+  element('detalle').hidden = false;
+  render();
+}
+function scaleFor(groups) {
+  const values = groups.map((group) => group.value);
+  const amplitude = Math.max(1, ...values.map(Math.abs));
+  const low = Math.min(0, ...values.map((value) => value / amplitude));
+  const high = Math.max(0, ...values.map((value) => value / amplitude));
+  return (value) => 100 * (value / amplitude - low) / (high - low || 1);
+}
+function render() {
+  if (!dataset) return;
+  try {
+    const x = Number(dimension.value), y = Number(measure.value);
+    if (previousDimension !== x) selectedCategory = null;
+    previousDimension = x;
+    check(x !== y, 'Elige columnas distintas para agrupar y sumar.');
+    const filterIndex = filterColumn.value === '' ? null : Number(filterColumn.value);
+    const filterValue = filter.value === '' ? null : filter.selectedOptions[0].textContent;
+    const kept = dataset.cells.filter((row) => filterIndex === null || filterValue === null || category(row[filterIndex]) === filterValue);
+    const grouped = new Map();
+    const valid = [];
+    for (const row of kept) {
+      const number = numeric(row[y], decimal.value);
+      if (number === null) continue;
+      const label = category(row[x]);
+      if (!grouped.has(label)) grouped.set(label, []);
+      grouped.get(label).push(number);
+      valid.push(number);
+    }
+    if (!grouped.has(selectedCategory)) selectedCategory = null;
+    const groups = [...grouped].map(([label, entries]) => ({ label, value: sum(entries) }));
+    displayedGroups = groups.slice(0, limits.categories);
+    detailRows = selectedCategory === null ? kept : kept.filter((row) => category(row[x]) === selectedCategory);
+    const unit = y === dataset.columns.indexOf(dataset.y) && dataset.unit ? ' ' + dataset.unit : '';
+    element('total').textContent = valid.length ? numberText.format(sum(valid)) + unit : 'Sin valores numéricos';
+    element('recuento').textContent = valid.length + ' registros sumados de ' + kept.length + (groups.length > limits.categories ? ' · Primeras ' + limits.categories + ' categorías en la gráfica.' : '');
+    element('seleccion').textContent = selectedCategory === null ? 'Toca una barra para ver sus registros.' : 'Registros de ' + selectedCategory + ' · Toca otra vez para ver todos.';
+    const scale = scaleFor(displayedGroups);
+    const bars = displayedGroups.map((group, index) => {
+      const control = node('button');
+      control.type = 'button'; control.className = 'bar-row';
+      control.setAttribute('aria-pressed', String(selectedCategory === group.label));
+      const label = node('span'); label.className = 'bar-heading';
+      label.append(node('span', group.label), node('strong', numberText.format(group.value) + unit));
+      const track = node('span'); track.className = 'track'; track.setAttribute('aria-hidden', 'true');
+      const zero = node('span'); zero.className = 'zero'; zero.style.left = scale(0) + '%';
+      const bar = node('span'); bar.style.left = Math.min(scale(0), scale(group.value)) + '%'; bar.style.width = Math.abs(scale(group.value) - scale(0)) + '%';
+      track.append(zero, bar); control.append(label, track);
+      control.addEventListener('click', () => {
+        selectedCategory = selectedCategory === group.label ? null : group.label;
+        render();
+        element('bars').children[index]?.focus({ preventScroll: true });
+      });
+      return control;
+    });
+    element('bars').replaceChildren(...bars);
+    const header = node('tr');
+    header.append(...dataset.columns.map((label) => { const cell = node('th', label); cell.scope = 'col'; return cell; }));
+    element('encabezados').replaceChildren(header);
+    element('filas').replaceChildren(...detailRows.slice(0, limits.details).map((row) => {
+      const line = node('tr'); line.append(...row.map((value) => node('td', value == null ? '' : String(value)))); return line;
+    }));
+    element('detalle-info').textContent = 'Se muestran ' + Math.min(detailRows.length, limits.details) + ' de ' + detailRows.length + ' registros. El CSV incluye todos los del detalle.';
+    element('descarga-csv').disabled = !detailRows.length;
+    element('descarga-svg').disabled = !displayedGroups.length;
+    element('aviso').textContent = '';
+  } catch (error) {
+    element('aviso').textContent = error.message;
+    element('bars').replaceChildren(); element('filas').replaceChildren(); element('encabezados').replaceChildren();
+    for (const id of ['total', 'recuento', 'seleccion', 'detalle-info']) element(id).textContent = '';
+    element('descarga-csv').disabled = true; element('descarga-svg').disabled = true;
+  }
+}
+function save(text, mediaType, filename) {
+  const anchor = node('a');
+  const url = URL.createObjectURL(new Blob([text], { type: mediaType }));
+  anchor.href = url; anchor.download = filename;
+  document.body.append(anchor); anchor.click(); anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+function csvCell(value) {
+  let text = String(value ?? '');
+  if (typeof value === 'string' && /^[\t\r\n ]*[=+@-]/.test(text) && numeric(text, '.') === null && numeric(text, ',') === null) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+function escapeXml(value) {
+  const xml = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&apos;' };
+  return String(value).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/[&<>"']/g, (character) => xml[character]);
+}
+element('descarga-csv').addEventListener('click', () => {
+  const csv = [dataset.columns, ...detailRows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+  save('\uFEFF' + csv + '\r\n', 'text/csv;charset=utf-8', 'registros-filtrados.csv');
+});
+element('descarga-svg').addEventListener('click', () => {
+  const scale = scaleFor(displayedGroups);
+  const position = (value) => 250 + scale(value) * 4.6;
+  const zero = position(0), height = 100 + displayedGroups.length * 31;
+  const caption = (value, length) => escapeXml(value.length > length ? value.slice(0, length - 1) + '…' : value);
+  const bars = displayedGroups.map(({ label, value }, index) => {
+    const y = 70 + index * 31;
+    return `<g><title>${escapeXml(label)}: ${numberText.format(value)}</title><text x="20" y="${y + 12}">${caption(label, 29)}</text><rect x="${Math.min(zero, position(value))}" y="${y}" width="${Math.abs(zero - position(value))}" height="13" fill="#187568"/><text x="727" y="${y + 12}">${numberText.format(value)}</text></g>`;
+  }).join('');
+  const subtitle = 'Suma de ' + dataset.columns[Number(measure.value)] + ' por ' + dataset.columns[Number(dimension.value)];
+  save(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 ${height}" font-family="system-ui,sans-serif" font-size="14" fill="#132927"><title>${escapeXml(dataset.title)}</title><desc>${escapeXml(dataset.source)}</desc><rect width="100%" height="100%" fill="white"/><text x="20" y="30" font-size="22" font-weight="700">${caption(dataset.title, 76)}</text><text x="20" y="53">${caption(subtitle, 100)}</text><path d="M${zero} 68 V${height - 32}" stroke="#526961"/>${bars}<text x="20" y="${height - 12}">Fuente · ${caption(dataset.source, 105)}</text></svg>`, 'image/svg+xml;charset=utf-8', 'grafica.svg');
+});
+filePicker.addEventListener('change', async () => {
+  const file = filePicker.files[0];
+  if (!file) return;
+  const token = ++sequence;
+  try {
+    check(file.size <= limits.bytes, 'El archivo supera el máximo de 5 MiB de esta vista.');
+    const source = (await file.text()).replace(/^\uFEFF/, '');
+    if (token !== sequence) return;
+    const parsed = /\.json$/i.test(file.name) ? JSON.parse(source) : null;
+    let input = Array.isArray(parsed) ? { rows: parsed } : parsed;
+    if (!/\.json$/i.test(file.name)) {
+      check(/\.(csv|tsv)$/i.test(file.name), 'Abre un archivo CSV, TSV o JSON.');
+      const separator = /\.tsv$/i.test(file.name) ? '\t' : delimiterFor(source);
+      const rows = parseCsv(source, separator);
+      const sample = rows.slice(0, 100).flatMap(Object.values);
+      const decimalGuess = separator !== ',' && sample.some((value) => /^[+-]?\d+,\d+$/.test(value)) ? ',' : '.';
+      input = { rows, decimal: decimalGuess };
+    }
+    check(input && typeof input === 'object', 'Se requiere un objeto JSON con rows o una lista de registros.');
+    openDataset(input, file.name);
+  } catch (error) {
+    if (token === sequence) element('aviso').textContent = error.message;
+  } finally {
+    if (token === sequence) filePicker.value = '';
+  }
+});
+element('ejemplo').addEventListener('click', () => {
+  sequence += 1;
+  openDataset({ title:'Consumo por municipio', source:'Datos simulados de ejemplo', unit:'m³', x:'Municipio', y:'Consumo', filters:['Periodo'], rows:[
+    { Municipio:'Centro', Consumo:24, Periodo:'2024' }, { Municipio:'Norte', Consumo:12, Periodo:'2024' },
+    { Municipio:'Centro', Consumo:28, Periodo:'2025' }, { Municipio:'Norte', Consumo:16, Periodo:'2025' },
+  ] }, 'Ejemplo');
+});
+for (const control of [dimension, measure, filter, decimal]) control.addEventListener('change', render);
+filterColumn.addEventListener('change', () => { selectedCategory = null; refillFilter(); render(); });
+</script>
+</html>

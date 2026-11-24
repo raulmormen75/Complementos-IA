@@ -1,0 +1,7 @@
+interface:
+  display_name: Gráficos
+  short_description: Datos, mapas y diagramas
+  icon_small: ./assets/graficos-prisma-icono.png
+  icon_large: ./assets/graficos-prisma-icono.png
+  brand_color: "#0C8B72"
+  default_prompt: Analiza los datos, comprueba los cálculos y entrega las gráficas y archivos solicitados.

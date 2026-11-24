@@ -1,0 +1,37 @@
+{
+  "interface": {
+    "displayName": "Gr\u00e1ficos",
+    "shortDescription": "Datos, mapas y diagramas",
+    "longDescription": "Crea gr\u00e1ficas interactivas, mapas, redes y escenas matem\u00e1ticas. Contrasta c\u00e1lculos y comparte resultados en HTML, Excel, PDF, PNG o SVG sin cr\u00e9ditos externos.",
+    "developerName": "Raul Morales",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "defaultPrompt": "Analiza los datos, comprueba los c\u00e1lculos y elige la visualizaci\u00f3n y el formato adecuados.",
+    "logo": "./assets/graficos-prisma-icono.png",
+    "composerIcon": "./assets/graficos-prisma-icono.png",
+    "logoDark": "./assets/graficos-prisma-icono.png",
+    "composerIconDark": "./assets/graficos-prisma-icono.png",
+    "brandColor": "#0C8B72",
+    "brandColorDark": "#0C8B72"
+  },
+  "name": "graficos",
+  "version": "0.5.7",
+  "description": "Analiza datos verificables y crea tableros, gr\u00e1ficas, mapas, diagramas y explicaciones matem\u00e1ticas con salida editable.",
+  "author": {
+    "name": "Raul Morales"
+  },
+  "keywords": [
+    "gr\u00e1ficas",
+    "an\u00e1lisis",
+    "mapas",
+    "diagramas",
+    "matem\u00e1ticas",
+    "Excel",
+    "KPI",
+    "inteligencia de negocios",
+    "calidad de datos"
+  ],
+  "skills": "./skills"
+}
