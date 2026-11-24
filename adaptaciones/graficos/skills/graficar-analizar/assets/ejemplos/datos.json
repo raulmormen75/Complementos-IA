@@ -1,0 +1,21 @@
+{
+  "title": "Consumo de agua por región",
+  "source": "Ejemplo sintético. Cifras y ubicaciones ficticias.",
+  "unit": "m³",
+  "x": "region",
+  "y": "consumo",
+  "filters": ["periodo", "sector"],
+  "region": "region",
+  "latitude": "latitud",
+  "longitude": "longitud",
+  "surface": "sine",
+  "rows": [
+    {"region":"Norte","periodo":"2025","sector":"Hogares","consumo":18,"latitud":20.05,"longitud":-99.03},
+    {"region":"Norte","periodo":"2026","sector":"Hogares","consumo":21,"latitud":20.05,"longitud":-99.03},
+    {"region":"Poniente","periodo":"2025","sector":"Servicios","consumo":14,"latitud":20.02,"longitud":-99.2},
+    {"region":"Poniente","periodo":"2026","sector":"Servicios","consumo":17,"latitud":20.02,"longitud":-99.2},
+    {"region":"Sur","periodo":"2025","sector":"Hogares","consumo":11,"latitud":19.92,"longitud":-99.02},
+    {"region":"Sur","periodo":"2026","sector":"Hogares","consumo":10,"latitud":19.92,"longitud":-99.02}
+  ],
+  "edges": [{"from":"Captación","to":"Tratamiento"},{"from":"Tratamiento","to":"Distribución"}]
+}

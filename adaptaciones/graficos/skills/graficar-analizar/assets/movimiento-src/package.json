@@ -1,0 +1,22 @@
+{
+  "name": "movimiento-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Motores opcionales y reproducibles para los complementos de movimiento",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node verify.mjs"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "animejs": "4.5.0",
+    "pixi-filters": "6.1.5",
+    "pixi.js": "8.23.0",
+    "postprocessing": "6.39.6",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

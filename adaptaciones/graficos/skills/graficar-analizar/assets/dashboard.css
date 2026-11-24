@@ -1,0 +1,51 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #0f172a;
+  background: #f1f5f9;
+  line-height: 1.52;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+main { width: min(1220px, 100% - 30px); margin: 0 auto 50px; }
+header { padding: 31px 0 14px; border-bottom: 3px solid #1755a3; overflow-wrap: anywhere; }
+h1 { font-size: clamp(1.75rem, 4vw, 2.65rem); line-height: 1.2; margin: 0; }
+h2 { font-size: 1.28rem; line-height: 1.27; margin: 0 0 14px; color: #143764; }
+p { margin: 8px 0 12px; }
+main > section { padding: 20px; margin-top: 18px; background: #fff; }
+.controls { display: flex; flex-wrap: wrap; align-items: end; gap: 11px; margin: 10px 0; }
+.controls label { display: grid; gap: 3px; min-width: 130px; max-width: 100%; font-weight: 600; }
+select, input, button { font: inherit; max-width: 100%; }
+button, select, input[type=number] { border-radius: 4px; border: 1px solid #8297ad; padding: 6px 10px; min-height: 41px; }
+input[type=number] { width: 140px; }
+button { background: #19578f; color: #fff; cursor: pointer; }
+button:hover { background: #124471; }
+button:focus-visible, input:focus-visible, select:focus-visible, .pick:focus { outline: 3px solid #267bb6; outline-offset: 3px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 16px 0; gap: 12px; }
+.kpis div { padding: 8px 12px; border-left: 3px solid #3977b2; background: #eef5fb; min-width: 0; }
+.kpis dt { font-size: .86rem; font-weight: 600; }
+.kpis dd { margin: 4px 0 0; font-size: clamp(1.04rem, 2vw, 1.52rem); font-weight: 720; overflow-wrap: anywhere; }
+.figure { overflow: auto; }
+.figure svg, canvas { display: block; max-width: 100%; height: auto; min-height: 0; }
+.pick { cursor: pointer; }
+.pick:hover { filter: brightness(.90); }
+.table { overflow: auto; margin-top: 12px; max-height: min(45vh, 540px); }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; border-bottom: 1px solid #dce6f0; padding: 7px 10px; }
+th { background: #e7f0fb; position: sticky; top: 0; }
+.plotly { min-height: 390px; }
+@media (max-width: 650px) {
+  main > section { padding: 13px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .figure svg { min-width: 520px; }
+  .controls label { width: min(100%, 14.5rem); }
+}
+@media print {
+  :root, main > section { background: #fff; }
+  header { padding-top: 0; }
+  .controls, canvas, #three, #plotly-seccion { display: none; }
+  .figure { overflow: visible; }
+  .figure svg { max-width: 100%; min-width: 0; }
+  .table { max-height: none; }
+}

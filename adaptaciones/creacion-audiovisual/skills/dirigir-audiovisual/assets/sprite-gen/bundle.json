@@ -1,0 +1,12 @@
+{
+  "version": "3.15.0",
+  "wheel": "sprite_gen-3.15.0-py3-none-any.whl",
+  "sha256": "a3a712522c757651ae0345d63f52bf6ba597313727657e42a2130520d10cd8d2",
+  "source": "https://github.com/aldegad/sprite-gen",
+  "license": "Apache-2.0",
+  "license_files": ["LICENSE", "NOTICE"],
+  "requires_python": ">=3.11",
+  "runtime_dependencies": ["pillow>=12.3.0,<13", "numpy>=2.2.6,<3"],
+  "built_on": "2026-11-05",
+  "build": "Wheel construido sin modificar el código del motor; no incluye binarios ni pesos de modelos externos."
+}

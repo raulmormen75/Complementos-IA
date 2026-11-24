@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob:; media-src blob:">
+  <title>Estudio portátil</title>
+  <style>
+    :root { color-scheme: dark; font: 100%/1.55 system-ui, sans-serif; background: #131a22; color: #edf2f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 73rem; margin: 0 auto; padding: clamp(1rem, 5vw, 3rem); }
+    h1 { font-size: clamp(1.6rem, 4vw, 2.65rem); line-height: 1.1; margin: 0; }
+    h2 { font-size: 1.15rem; margin-top: 0; }
+    p { max-width: 61ch; }
+    .layout { display: grid; grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 1.3fr); gap: 1.75rem; align-items: start; }
+    form { min-width: 0; padding: 1rem; background: #1d2a38; border: 1px solid #405366; border-radius: .8rem; }
+    label, legend { font-weight: 620; }
+    input, select, button, .download { font: inherit; }
+    input:not([type="radio"]), select { display: block; width: 100%; min-height: 2.75rem; margin: .25rem 0 .45rem; }
+    input[type="file"] { border: 1px solid #647889; border-radius: .35rem; padding: .3rem; }
+    input[type="file"]::file-selector-button { margin: .12rem .45rem .12rem .1rem; }
+    input[type="number"], select { background: #11202b; color: #edf2f5; border: 1px solid #647889; border-radius: .35rem; padding: .35rem; }
+    .field { display: block; margin: .8rem 0; }
+    .help { font-size: .87rem; color: #d5e1e9; }
+    fieldset { margin: .85rem 0; border: 1px solid #647889; border-radius: .45rem; }
+    fieldset label { display: block; padding: .26rem 0; }
+    .buttons { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .9rem; }
+    button, .download { min-height: 2.75rem; padding: .45rem .7rem; border: 1px solid #889ca9; border-radius: .35rem; background: #223444; color: #f6fafb; font-weight: 620; cursor: pointer; }
+    .primary, .download { background: #91dfd7; border-color: #91dfd7; color: #122630; }
+    button:disabled { opacity: .65; cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid #f1cb76; outline-offset: 3px; }
+    canvas { display: block; width: 100%; height: auto; max-height: 72vh; object-fit: contain; background: #101a25; border: 1px solid #647889; border-radius: .5rem; }
+    canvas[data-vertical="true"] { max-width: 25rem; margin-inline: auto; }
+    table { width: 100%; border-collapse: collapse; overflow-wrap: anywhere; }
+    th, td { padding: .35rem .45rem; text-align: left; border-bottom: 1px solid #657483; }
+    td + td, th + th { text-align: right; }
+    progress { display: block; margin-top: .7rem; width: 100%; height: 1rem; }
+    [hidden] { display: none !important; }
+    #status { min-height: 3em; }
+    @media (max-width: 48rem) { .layout { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; } }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Estudio portátil</h1>
+    <p>Anima una gráfica o imagen desde tu navegador. Los archivos se procesan en el dispositivo.</p>
+    <noscript>Abre este archivo HTML en un navegador con JavaScript para usar el estudio.</noscript>
+    <div class="layout">
+      <form autocomplete="off" aria-label="Escena y exportación">
+        <h2>Escena</h2>
+        <div class="field">
+          <label for="chart">Datos de Gráficos</label>
+          <input id="chart" type="file" accept=".json,application/json" aria-describedby="chart-help">
+          <div id="chart-help" class="help">Adjunta escena.json con hasta ocho filas y valores numéricos. Los valores y sus unidades se conservan.</div>
+        </div>
+        <div class="field">
+          <label for="photo">Imagen</label>
+          <input id="photo" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+        </div>
+        <div class="field">
+          <label for="audio">Pista de audio opcional</label>
+          <input id="audio" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" aria-describedby="audio-help">
+          <div id="audio-help" class="help">Se reproduce al exportar y se recorta al final del video.</div>
+        </div>
+        <div class="field">
+          <label for="aspect">Encuadre</label>
+          <select id="aspect"><option value="wide">Horizontal (16:9)</option><option value="tall">Vertical (9:16)</option></select>
+        </div>
+        <div class="field">
+          <label for="seconds">Duración en segundos</label>
+          <input id="seconds" type="number" min="3" max="30" value="6" step="1" required>
+        </div>
+        <fieldset>
+          <legend>Formato de video</legend>
+          <label><input type="radio" name="format" value="mp4" checked> MP4 · H.264</label>
+          <label><input type="radio" name="format" value="webm"> WebM</label>
+          <div id="support" class="help" aria-live="polite">Comprobando el navegador…</div>
+        </fieldset>
+        <div class="buttons">
+          <button type="button" id="sample">Cargar ejemplo</button>
+          <button type="button" id="preview" disabled>Reproducir vista previa</button>
+          <button type="button" id="export" class="primary" disabled>Exportar video</button>
+          <button type="button" id="stop" hidden>Detener</button>
+        </div>
+        <progress id="progress" max="1" value="0" aria-label="Avance" hidden></progress>
+        <p id="status" role="status">Adjunta datos, una imagen o ambos.</p>
+        <a id="download" class="download" hidden>Descargar video</a>
+      </form>
+      <section aria-labelledby="preview-title">
+        <h2 id="preview-title">Vista previa</h2>
+        <canvas id="scene" width="960" height="540" data-vertical="false" role="img" aria-label="Escena de video">Vista previa de la escena.</canvas>
+        <details id="chart-summary" hidden>
+          <summary>Datos representados</summary>
+          <table aria-label="Datos de la gráfica">
+            <thead><tr><th scope="col">Categoría</th><th scope="col" id="unit">Valor</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p id="source" class="help"></p>
+        </details>
+      </section>
+    </div>
+  </main>
+  <script>
+    'use strict';
+
+    const byId = (id) => document.getElementById(id);
+    const canvas = byId('scene');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const number = new Intl.NumberFormat('es-MX', { maximumSignificantDigits: 15 });
+    const state = { chart: null, photo: null, audio: null, downloadUrl: null, frame: 0, finish: null, busy: false, loading: 0 };
+    const sample = {
+      title: 'Consumo de agua por zona', source: 'Datos ficticios de demostración.', unit: 'm³',
+      x: 'zona', y: 'consumo', rows: [{ zona: 'Norte', consumo: 86 }, { zona: 'Centro', consumo: 63 }, { zona: 'Sur', consumo: 61 }]
+    };
+
+    const status = (message) => { byId('status').textContent = message; };
+    const choice = () => document.querySelector('[name="format"]:checked').value;
+    const hasContent = () => Boolean(state.chart || state.photo);
+    const duration = () => Number(byId('seconds').value);
+
+    function chartFrom(payload) {
+      if (!payload || typeof payload !== 'object' || !Array.isArray(payload.rows) ||
+          typeof payload.x !== 'string' || typeof payload.y !== 'string') {
+        throw new Error('El JSON debe incluir las columnas x, y y la lista rows de una escena de Gráficos.');
+      }
+      if (payload.rows.length < 1 || payload.rows.length > 8) {
+        throw new Error('La escena portátil admite de una a ocho filas. Prepara el resumen en Gráficos.');
+      }
+      const rows = payload.rows.map((row) => {
+        const label = row?.[payload.x];
+        const value = row?.[payload.y];
+        if ((typeof label !== 'string' && typeof label !== 'number') || typeof value !== 'number' || !Number.isFinite(value)) {
+          throw new Error('Cada fila debe tener categoría y valor numérico válido.');
+        }
+        return { label: String(label), value };
+      });
+      const maxMagnitude = Math.max(...rows.map(({ value }) => Math.abs(value)));
+      if (maxMagnitude >= 1e300) throw new Error('Ajusta la unidad para representar valores de esta magnitud.');
+      return { title: typeof payload.title === 'string' ? payload.title : 'Gráfica de datos',
+        unit: typeof payload.unit === 'string' ? payload.unit : '',
+        source: typeof payload.source === 'string' ? payload.source : '', rows };
+    }
+
+    function updateTable() {
+      byId('chart-summary').hidden = !state.chart;
+      byId('rows').replaceChildren();
+      byId('source').textContent = state.chart?.source || '';
+      byId('unit').textContent = state.chart?.unit || 'Valor';
+      if (!state.chart) return;
+      for (const { label, value } of state.chart.rows) {
+        const row = document.createElement('tr');
+        for (const text of [label, number.format(value)]) {
+          const cell = document.createElement('td');
+          cell.textContent = text;
+          row.append(cell);
+        }
+        byId('rows').append(row);
+      }
+    }
+
+    function paintText(text, x, y, size, maxWidth, color = '#f2f7fa', align = 'left') {
+      ctx.fillStyle = color;
+      ctx.font = `600 ${size}px system-ui, sans-serif`;
+      ctx.textAlign = align;
+      ctx.textBaseline = 'middle';
+      const original = String(text);
+      let fitted = original;
+      while (fitted.length > 1 && ctx.measureText(fitted === original ? fitted : `${fitted}…`).width > maxWidth) fitted = fitted.slice(0, -1);
+      ctx.fillText(fitted === original ? fitted : `${fitted}…`, x, y, maxWidth);
+    }
+
+    function paintPhoto(progress, height) {
+      const { width } = canvas;
+      const photo = state.photo;
+      const scale = Math.max(width / photo.naturalWidth, height / photo.naturalHeight) * (1.03 + progress * .09);
+      const transformedWidth = photo.naturalWidth * scale;
+      const transformedHeight = photo.naturalHeight * scale;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, width, height);
+      ctx.clip();
+      ctx.drawImage(photo, (width - transformedWidth) / 2, (height - transformedHeight) / 2, transformedWidth, transformedHeight);
+      ctx.restore();
+    }
+
+    function paintChart(progress, offset) {
+      const { width, height } = canvas;
+      const chart = state.chart;
+      const pad = width * .065;
+      const chartHeight = height - offset;
+      const titleSize = Math.min(36, width * .052);
+      const textSize = Math.min(20, width * .033);
+      const heading = offset + chartHeight * .115;
+      paintText(chart.title, pad, heading, titleSize, width - pad * 2);
+      if (chart.unit) paintText(chart.unit, pad, heading + titleSize * 1.03, textSize, width - pad * 2, '#b3c7d9');
+      if (chart.source) paintText(chart.source, pad, height - chartHeight * .06, textSize * .75, width - pad * 2, '#b3c7d9');
+
+      const min = Math.min(0, ...chart.rows.map(({ value }) => value));
+      const max = Math.max(0, ...chart.rows.map(({ value }) => value));
+      const chartX = width * .345;
+      const chartWidth = width * .405;
+      const scale = (value) => chartX + ((value - min) / (max - min || 1)) * chartWidth;
+      const zero = scale(0);
+      const top = offset + chartHeight * .28;
+      const rowHeight = chartHeight * .57 / chart.rows.length;
+      ctx.strokeStyle = '#567181';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(zero, top);
+      ctx.lineTo(zero, top + rowHeight * chart.rows.length);
+      ctx.stroke();
+
+      const ease = 1 - (1 - Math.min(1, progress / .53)) ** 3;
+      chart.rows.forEach(({ label, value }, index) => {
+        const mid = top + (index + .5) * rowHeight;
+        const end = scale(value * ease);
+        const barHeight = Math.min(28, rowHeight * .52);
+        ctx.fillStyle = value < 0 ? '#f1cb76' : '#91dfd7';
+        ctx.fillRect(Math.min(zero, end), mid - barHeight / 2, Math.abs(zero - end), barHeight);
+        paintText(label, pad, mid, textSize, chartX - pad - 12, '#e6eef4');
+        paintText(number.format(value), width - pad, mid, textSize, width - pad - chartX - chartWidth - 9, '#fff7e1', 'right');
+      });
+    }
+
+    function render(progress = 1) {
+      if (!ctx) return;
+      const { width, height } = canvas;
+      ctx.fillStyle = '#101a25';
+      ctx.fillRect(0, 0, width, height);
+      const photoHeight = state.chart && state.photo ? height * .29 : height;
+      if (state.photo) paintPhoto(progress, photoHeight);
+      if (state.chart) paintChart(progress, state.photo ? photoHeight : 0);
+      if (!hasContent()) paintText('Adjunta datos o una imagen', width / 2, height / 2, 31, width * .9, '#d6e5ee', 'center');
+    }
+
+    function updateAspect() {
+      const tall = byId('aspect').value === 'tall';
+      canvas.width = tall ? 540 : 960;
+      canvas.height = tall ? 960 : 540;
+      canvas.dataset.vertical = String(tall);
+      render();
+    }
+
+    function supportedMime() {
+      if (!ctx || typeof canvas.captureStream !== 'function' || typeof MediaRecorder === 'undefined' ||
+          typeof MediaRecorder.isTypeSupported !== 'function' || typeof MediaStream === 'undefined') return '';
+      if (state.audio && !(window.AudioContext || window.webkitAudioContext)) return '';
+      const mp4 = state.audio ? ['video/mp4;codecs=avc1.42001f,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2']
+        : ['video/mp4;codecs=avc1.42001f', 'video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1'];
+      const webm = state.audio ? ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus']
+        : ['video/webm;codecs=vp8', 'video/webm;codecs=vp9'];
+      return (choice() === 'mp4' ? mp4 : webm).find((mime) => MediaRecorder.isTypeSupported(mime)) || '';
+    }
+
+    function clearDownload() {
+      if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
+      state.downloadUrl = null;
+      byId('download').hidden = true;
+      byId('download').removeAttribute('href');
+    }
+
+    function updateControls() {
+      const mime = supportedMime();
+      const format = choice().toUpperCase();
+      byId('support').textContent = mime ? `${format} disponible según la comprobación de este navegador${state.audio ? ' con pista de audio' : ''}.`
+        : `${format}${state.audio ? ' con audio' : ''} no está disponible en este navegador. La vista previa se conserva.`;
+      byId('preview').disabled = !ctx || !hasContent() || state.busy || Boolean(state.loading);
+      byId('export').disabled = !hasContent() || !mime || state.busy || Boolean(state.loading);
+      byId('sample').disabled = state.busy || Boolean(state.loading);
+      document.querySelectorAll('form input, form select').forEach((field) => { field.disabled = state.busy; });
+      byId('stop').hidden = !state.busy;
+      byId('progress').hidden = !state.busy;
+    }
+
+    function setBusy(busy) {
+      state.busy = busy;
+      byId('progress').value = 0;
+      updateControls();
+    }
+
+    function runAnimation(seconds, onComplete) {
+      const start = performance.now();
+      function paint(now) {
+        const progress = Math.min(1, Math.max(0, (now - start) / (seconds * 1000)));
+        byId('progress').value = progress;
+        render(progress);
+        if (progress < 1) state.frame = requestAnimationFrame(paint);
+        else onComplete();
+      }
+      state.frame = requestAnimationFrame(paint);
+    }
+
+    async function prepareAudio(file) {
+      const AudioDevice = window.AudioContext || window.webkitAudioContext;
+      const context = new AudioDevice();
+      try {
+        await context.resume();
+        const buffer = await context.decodeAudioData(await file.arrayBuffer());
+        const source = context.createBufferSource();
+        const destination = context.createMediaStreamDestination();
+        source.buffer = buffer;
+        source.connect(destination);
+        return { context, source, track: destination.stream.getAudioTracks()[0] };
+      } catch (error) {
+        await context.close().catch(() => {});
+        throw error;
+      }
+    }
+
+    function validateHeader(mime, bytes) {
+      if (mime.startsWith('video/mp4')) return bytes.length >= 12 && String.fromCharCode(...bytes.slice(4, 8)) === 'ftyp';
+      return bytes.length >= 4 && bytes.slice(0, 4).every((byte, index) => byte === [26, 69, 223, 163][index]);
+    }
+
+    async function exportScene() {
+      if (state.busy || !byId('seconds').reportValidity()) return;
+      const format = choice();
+      const mime = supportedMime();
+      if (!mime || !hasContent()) return;
+      clearDownload();
+      setBusy(true);
+      status('Preparando el video en este dispositivo…');
+      let audio = null;
+      let stream = null;
+      let recorder = null;
+      let canceled = false;
+      let closed = false;
+      const chunks = [];
+
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        cancelAnimationFrame(state.frame);
+        if (audio) {
+          try { audio.source.stop(); } catch { /* Puede que la pista aún no haya comenzado. */ }
+          audio.track?.stop();
+          audio.context.close().catch(() => {});
+        }
+        stream?.getTracks().forEach((track) => track.stop());
+        state.finish = null;
+        setBusy(false);
+        render();
+      };
+      state.finish = (message) => {
+        canceled = true;
+        if (recorder?.state === 'recording') recorder.stop();
+        else close();
+        status(message);
+      };
+
+      try {
+        if (state.audio) {
+          const audioFile = state.audio;
+          audio = await prepareAudio(audioFile);
+          if (canceled) {
+            audio.track?.stop();
+            await audio.context.close().catch(() => {});
+            return;
+          }
+          if (!audio.track) throw new Error('No fue posible incluir la pista elegida.');
+        }
+        render(0);
+        stream = canvas.captureStream(30);
+        if (!stream.getVideoTracks().length) throw new Error('No fue posible capturar la imagen del lienzo.');
+        if (audio) stream.addTrack(audio.track);
+        recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 3500000 });
+        recorder.addEventListener('dataavailable', ({ data }) => { if (data.size) chunks.push(data); });
+        recorder.addEventListener('error', () => {
+          canceled = true;
+          close();
+          status(`El navegador no pudo grabar ${format.toUpperCase()}. La vista previa está disponible.`);
+        }, { once: true });
+        recorder.addEventListener('stop', async () => {
+          try {
+            if (canceled) return;
+            const actualMime = recorder.mimeType || mime;
+            const expected = `video/${format}`;
+            const blob = new Blob(chunks, { type: actualMime });
+            const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+            if (!actualMime.toLowerCase().startsWith(expected) || !validateHeader(mime, bytes)) {
+              throw new Error('El navegador no entregó un video comprobable en el formato elegido.');
+            }
+            if (canceled) return;
+            state.downloadUrl = URL.createObjectURL(blob);
+            const link = byId('download');
+            link.href = state.downloadUrl;
+            link.download = `escena.${format}`;
+            link.textContent = `Descargar ${format.toUpperCase()}`;
+            link.hidden = false;
+            status(`Video ${format.toUpperCase()} listo para descargar.`);
+          } catch (error) {
+            status(error.message);
+          } finally {
+            close();
+          }
+        }, { once: true });
+        recorder.start();
+        if (audio) audio.source.start();
+        status('Grabando el video. Deja esta pestaña visible hasta que termine.');
+        runAnimation(duration(), () => { if (recorder.state === 'recording') recorder.stop(); });
+      } catch (error) {
+        if (canceled) return;
+        canceled = true;
+        if (recorder?.state === 'recording') recorder.stop();
+        close();
+        status(`No se pudo iniciar la exportación. ${error.message || 'Revisa los archivos y la compatibilidad del navegador.'}`);
+      }
+    }
+
+    async function decodePhoto(file) {
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type) && !/\.(png|jpe?g|webp)$/i.test(file.name)) {
+        throw new Error('Usa una imagen PNG, JPEG o WebP.');
+      }
+      if (file.size > 20 * 1024 * 1024) throw new Error('Usa una imagen de hasta 20 MB.');
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      try {
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = () => reject(new Error('El navegador no pudo abrir la imagen.'));
+          image.src = url;
+        });
+        return image;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    function bindFile(input, key, load) {
+      let selection = 0;
+      input.addEventListener('change', async () => {
+        const current = ++selection;
+        const file = input.files[0];
+        clearDownload();
+        state.loading++;
+        updateControls();
+        try {
+          const content = file ? await load(file) : null;
+          if (current !== selection) return;
+          state[key] = content;
+          status(hasContent() ? 'Escena lista para previsualizar.' : 'Adjunta datos, una imagen o ambos.');
+        } catch (error) {
+          if (current !== selection) return;
+          state[key] = null;
+          input.value = '';
+          status(error instanceof SyntaxError ? 'El archivo no contiene un JSON válido.' : error.message);
+        } finally {
+          state.loading--;
+          updateTable();
+          updateControls();
+          render();
+        }
+      });
+    }
+
+    bindFile(byId('chart'), 'chart', async (file) => {
+      if (file.size > 1024 * 1024) throw new Error('Usa un JSON de hasta 1 MB para la escena portátil.');
+      return chartFrom(JSON.parse(await file.text()));
+    });
+    bindFile(byId('photo'), 'photo', decodePhoto);
+    bindFile(byId('audio'), 'audio', async (file) => {
+      if (file.size > 15 * 1024 * 1024) throw new Error('Usa una pista de hasta 15 MB.');
+      return file;
+    });
+    byId('sample').addEventListener('click', () => {
+      byId('chart').value = '';
+      state.chart = chartFrom(sample);
+      clearDownload();
+      updateTable();
+      updateControls();
+      render();
+      status('Ejemplo cargado con datos ficticios.');
+    });
+    byId('aspect').addEventListener('change', () => { clearDownload(); updateAspect(); });
+    byId('seconds').addEventListener('input', clearDownload);
+    document.querySelectorAll('[name="format"]').forEach((item) => item.addEventListener('change', () => { clearDownload(); updateControls(); }));
+    byId('preview').addEventListener('click', () => {
+      if (!hasContent() || !byId('seconds').reportValidity()) return;
+      setBusy(true);
+      status('Reproduciendo vista previa sin audio.');
+      state.finish = (message) => {
+        cancelAnimationFrame(state.frame);
+        render();
+        state.finish = null;
+        setBusy(false);
+        status(message);
+      };
+      render(0);
+      runAnimation(duration(), () => state.finish('Vista previa terminada.'));
+    });
+    byId('export').addEventListener('click', exportScene);
+    document.querySelector('form').addEventListener('submit', (event) => event.preventDefault());
+    byId('stop').addEventListener('click', () => state.finish?.('Operación detenida. Puedes volver a iniciarla.'));
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && state.busy) state.finish?.('La operación se detuvo al ocultar la pestaña.');
+    });
+    updateControls();
+    render();
+  </script>
+</body>
+</html>

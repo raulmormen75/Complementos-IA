@@ -1,0 +1,11 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "creacion-audiovisual",
+  "version": "0.1.0",
+  "description": "Dirección audiovisual, animación, montaje y sonido con flujos editables y herramientas locales.",
+  "displayName": "Creación audiovisual",
+  "author": {
+    "name": "Raul"
+  },
+  "repository": "https://github.com/raulmormen75/Complementos-IA"
+}

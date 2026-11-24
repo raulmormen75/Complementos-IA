@@ -1,12 +1,17 @@
 # Complementos IA
 
-Repositorio público de Raul para respaldar y adaptar complementos de IA.
+Repositorio público de Raul para respaldar y adaptar complementos de IA, con cero cargos adicionales.
 
-| Complemento | Instrucciones | Alcance |
+| Complemento | Respaldo de ChatGPT | Adaptación 0.1.0 |
 | --- | --- | --- |
-| Creación audiovisual | [SKILL.md](creacion-audiovisual/skills/dirigir-audiovisual/SKILL.md) | [Respaldo y pendientes](creacion-audiovisual/RESPALDO.md) |
-| Gráficos 0.5.7 | [SKILL.md](graficos/skills/graficar-analizar/SKILL.md) | [Respaldo y pendientes](graficos/RESPALDO.md) |
+| Creación audiovisual | [Estado](creacion-audiovisual/RESPALDO.md) | [Antigravity y Gemini](adaptaciones/creacion-audiovisual/README.md) |
+| Gráficos | [Estado](graficos/RESPALDO.md) | [Antigravity y Gemini](adaptaciones/graficos/README.md) |
+| Investigación profunda | [Estado](investigacion-profunda/RESPALDO.md) | [Antigravity y Gemini](adaptaciones/investigacion-profunda/README.md) |
 
-## Estado
+## Instalación
 
-Respaldo inicial del código fuente y las instrucciones. Se conserva la regla de cero cargos adicionales. No son paquetes instalables completos. La publicación no implica una licencia general de redistribución; respeta los avisos de las dependencias. Las adaptaciones y pruebas para Antigravity y Gemini quedan pendientes.
+Clona el repositorio o descarga el ZIP de GitHub. Cada adaptación tiene manifiestos independientes para Antigravity y Gemini CLI, una habilidad reutilizable y su guía para importarla a Gemini Apps. El estado es preliminar; las pruebas reales requieren las aplicaciones de destino. No se modificaron los complementos originales de ChatGPT.
+
+## Licencia
+
+[Propuesta de licencia MIT](LICENCIA-PROPUESTA.md) para las contribuciones originales de Raul; no se aplica automáticamente hasta que el titular confirme los términos. Las dependencias mantienen sus propias licencias y avisos. No se concede una licencia de terceros por el hecho de publicarlas aquí.

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es-MX">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escena WebGL 2 directa</title>
+<style>
+  body { margin: 0; padding: 16px; background: #101827; color: #edf4ff; font: 1rem system-ui,sans-serif; }
+  main { max-width: 960px; margin: auto; }
+  h1 { font-size: clamp(1.25rem, 4vw, 2rem); }
+  canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #18263d; border-radius: .6rem; }
+  button { font: inherit; padding: .5rem .8rem; margin: .8rem .3rem 0 0; }
+</style>
+<main>
+  <h1>Escena WebGL 2 directa</h1>
+  <canvas id="scene" width="960" height="540" aria-label="Cubo 3D animado con caras de distintos colores">Vista de un cubo 3D.</canvas>
+  <button id="toggle" disabled>Reproducir</button>
+  <button id="capture" disabled>Descargar fotograma</button>
+  <p id="status" role="status">Comprobando WebGL 2…</p>
+</main>
+<script>
+'use strict';
+const canvas = document.querySelector('#scene');
+const toggle = document.querySelector('#toggle');
+const capture = document.querySelector('#capture');
+const status = document.querySelector('#status');
+let running = false, request = 0, seconds = 0, previous;
+let render;
+
+function setRunning(value) {
+  running = value;
+  cancelAnimationFrame(request);
+  previous = undefined;
+  toggle.textContent = value ? 'Pausar' : 'Reproducir';
+  if (value) request = requestAnimationFrame(tick);
+}
+
+function tick(now) {
+  if (!running) return;
+  if (previous !== undefined) seconds += (now - previous) / 1000;
+  previous = now;
+  render(seconds);
+  request = requestAnimationFrame(tick);
+}
+
+function build(gl) {
+  const vertex = `#version 300 es
+    layout(location=0) in vec3 position;
+    layout(location=1) in vec3 color;
+    uniform float time;
+    uniform float aspect;
+    out vec3 faceColor;
+    void main() {
+      float c=cos(time), s=sin(time), a=cos(0.52), b=sin(0.52);
+      vec3 p=vec3(c*position.x+s*position.z, position.y, -s*position.x+c*position.z);
+      p=vec3(p.x, a*p.y-b*p.z, b*p.y+a*p.z);
+      float w=4.5-p.z;
+      gl_Position=vec4(2.05*p.x/aspect, 2.05*p.y, 1.02*w-0.4, w);
+      faceColor=color;
+    }`;
+  const fragment = `#version 300 es
+    precision highp float;
+    in vec3 faceColor;
+    out vec4 pixel;
+    void main() { pixel=vec4(faceColor,1.0); }`;
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+  const program = gl.createProgram();
+  const vs = compile(gl.VERTEX_SHADER, vertex);
+  const fs = compile(gl.FRAGMENT_SHADER, fragment);
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  gl.deleteShader(vs);
+  gl.deleteShader(fs);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+
+  const corners = [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  const faces = [[4,5,6,7],[1,0,3,2],[0,4,7,3],[5,1,2,6],[3,7,6,2],[0,1,5,4]];
+  const colors = [[0.15,0.74,0.88],[0.31,0.47,0.86],[0.27,0.83,0.58],[0.16,0.49,0.72],[0.68,0.90,0.98],[0.27,0.42,0.52]];
+  const vertices = new Float32Array(faces.flatMap((face, i) =>
+    [0,1,2,0,2,3].flatMap(j => [...corners[face[j]], ...colors[i]])));
+  gl.bindVertexArray(gl.createVertexArray());
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  for (const i of [0,1]) {
+    gl.enableVertexAttribArray(i);
+    gl.vertexAttribPointer(i, 3, gl.FLOAT, false, 24, i * 12);
+  }
+  gl.useProgram(program);
+  const time = gl.getUniformLocation(program, 'time');
+  const aspect = gl.getUniformLocation(program, 'aspect');
+  gl.enable(gl.DEPTH_TEST);
+  return t => {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clearColor(0.094, 0.149, 0.239, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniform1f(time, t);
+    gl.uniform1f(aspect, canvas.width / canvas.height);
+    gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 6);
+  };
+}
+
+function initialize() {
+  try {
+    const gl = canvas.getContext('webgl2');
+    if (!gl) throw new Error('WebGL 2 no está disponible en este navegador o entorno.');
+    render = build(gl);
+    render(seconds);
+    if (gl.getError() !== gl.NO_ERROR) throw new Error('El navegador no pudo dibujar la escena.');
+    window.webgl2Scene = {
+      renderFrame(frame, fps = 30) {
+        if (!Number.isSafeInteger(frame) || frame < 0 || !Number.isFinite(fps) || fps <= 0) {
+          throw new RangeError('Indica un fotograma entero y una cadencia positiva.');
+        }
+        setRunning(false);
+        seconds = frame / fps;
+        render(seconds);
+      },
+      captureFrame(frame, fps = 30) {
+        this.renderFrame(frame, fps);
+        return canvas.toDataURL('image/png');
+      }
+    };
+    toggle.disabled = capture.disabled = false;
+    status.textContent = 'WebGL 2 activo. Escena ejecutada en el navegador sin dependencias externas.';
+  } catch (error) {
+    render = undefined;
+    delete window.webgl2Scene;
+    toggle.disabled = capture.disabled = true;
+    status.textContent = error.message || 'No se pudo iniciar WebGL 2.';
+  }
+}
+
+toggle.addEventListener('click', () => setRunning(!running));
+capture.addEventListener('click', () => {
+  render(seconds);
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = 'escena-webgl2.png';
+  link.click();
+});
+canvas.addEventListener('webglcontextlost', event => {
+  event.preventDefault();
+  setRunning(false);
+  delete window.webgl2Scene;
+  toggle.disabled = capture.disabled = true;
+  status.textContent = 'Se perdió el contexto gráfico. Esperando a que el navegador lo restablezca.';
+});
+canvas.addEventListener('webglcontextrestored', initialize);
+initialize();
+</script>
+</html>

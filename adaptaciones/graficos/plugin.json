@@ -1,0 +1,11 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "graficos",
+  "version": "0.1.0",
+  "description": "Análisis de datos verificables, gráficas, SQL local, matemáticas y tableros editables.",
+  "displayName": "Gráficos",
+  "author": {
+    "name": "Raul"
+  },
+  "repository": "https://github.com/raulmormen75/Complementos-IA"
+}

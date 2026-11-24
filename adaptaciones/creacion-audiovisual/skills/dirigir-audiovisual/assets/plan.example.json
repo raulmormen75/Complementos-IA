@@ -1,0 +1,14 @@
+{
+  "title": "Prueba de dirección visual",
+  "intent": "Demostrar una relación coherente entre forma, movimiento y tipografía",
+  "audience": "Revisión técnica interna",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "durationInFrames": 120,
+  "scenes": [
+    {"id": "introduccion", "from": 0, "durationInFrames": 45, "purpose": "Establecer forma y jerarquía", "visual": "Título HTML y objeto 3D con entrada gradual", "sound": "Silencio deliberado"},
+    {"id": "desarrollo", "from": 45, "durationInFrames": 75, "purpose": "Examinar el movimiento y el asentamiento", "visual": "Objeto en rotación y línea SVG en progreso", "sound": "Silencio deliberado"}
+  ],
+  "assets": []
+}

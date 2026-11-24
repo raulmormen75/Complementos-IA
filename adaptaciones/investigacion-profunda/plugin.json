@@ -1,0 +1,11 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "investigacion-profunda",
+  "version": "0.1.0",
+  "description": "Investigación documental, verificación contextual, citas y comprobación independiente de fuentes.",
+  "displayName": "Investigación profunda",
+  "author": {
+    "name": "Raul"
+  },
+  "repository": "https://github.com/raulmormen75/Complementos-IA"
+}

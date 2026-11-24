@@ -1,13 +1,3 @@
-# Respaldo inicial de Gráficos 0.5.7
+# Respaldo de Gráficos 0.5.7
 
-Archivos de texto del complemento original. No es un paquete instalable completo. Pendientes (binarios o recursos de gran tamaño):
-
-- `assets/graficos-prisma-icono.png`
-- `assets/graficos-prisma.png`
-- `skills/graficar-analizar/assets/graficos-prisma-icono.png`
-- `skills/graficar-analizar/assets/graficos-prisma.png`
-- `skills/graficar-analizar/assets/rebotes.html`
-- `skills/graficar-analizar/assets/vendor/plotly.cjs`
-- `skills/graficar-analizar/assets/vendor/three-surface.cjs`
-
-No se ha comprobado la ejecución ni la compatibilidad con otros arneses. Se conservan los avisos de licencias; no se concede una licencia general para el repositorio.
+Se conservan los 43 archivos de texto iniciales y se recuperaron `skills/graficar-analizar/assets/rebotes.html`, `assets/vendor/plotly.cjs` y `assets/vendor/three-surface.cjs` dentro de la habilidad. Quedan cuatro imágenes de marca: `assets/graficos-prisma-icono.png`, `assets/graficos-prisma.png` y sus dos copias dentro de `skills/graficar-analizar/assets/`. El archivo completo no se pudo descargar. No se ha probado la ejecución. Consulta `adaptaciones/graficos` para la versión portátil preliminar.

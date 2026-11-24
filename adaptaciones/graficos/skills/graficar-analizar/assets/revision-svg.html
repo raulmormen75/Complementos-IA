@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Revisión de SVG</title>
+  <style>
+    :root{color-scheme:light;font:16px/1.5 system-ui,sans-serif;color:#17283a;background:#f4f8fa;--muted:#415567;--line:#bdcdd8;--accent:#075967}
+    *{box-sizing:border-box}body{margin:0}main{width:min(1080px,100%);margin:auto;padding:clamp(16px,4vw,38px)}
+    h1,h2,p{margin:0}h1{font-size:clamp(1.65rem,5vw,2.3rem);line-height:1.15}h2{font-size:1rem}
+    .intro{max-width:62ch;margin-top:8px;color:var(--muted)}.fields,.preview-grid,.editor{margin-top:20px}
+    .fields,.preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    label{display:block;font-weight:650}input[type=file]{width:100%;min-height:44px;margin-top:5px;color:var(--muted)}
+    input::file-selector-button,button{min-height:44px;padding:8px 14px;font:inherit;font-weight:650;border-radius:7px;border:1px solid var(--line);background:white;color:var(--accent);cursor:pointer}
+    input::file-selector-button{margin-inline-end:7px}button.primary{background:var(--accent);border-color:var(--accent);color:white}button:disabled{cursor:default;opacity:.53}
+    button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #1596aa;outline-offset:2px}
+    .preview{margin:0;min-width:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:white}.preview figcaption{padding:10px 13px;font-weight:650;border-bottom:1px solid var(--line)}
+    .preview-area{min-height:154px;display:grid;place-items:center;padding:12px;color:var(--muted);background-color:#fff;background-image:conic-gradient(#e9eff2 25%,#fff 0 50%,#e9eff2 0 75%,#fff 0);background-size:20px 20px;text-align:center}
+    .preview-area img{display:block;max-width:100%;max-height:340px;height:auto;object-fit:contain}.preview-area img[hidden]{display:none}
+    .preview-area span{padding:4px 8px;background:#fffffff2;border-radius:5px}.preview-area span[hidden]{display:none}
+    textarea,input[type=number]{border:1px solid var(--line);border-radius:7px;background:white;color:inherit}
+    textarea{display:block;width:100%;min-height:125px;resize:vertical;margin-top:6px;padding:10px;font:14px/1.45 ui-monospace,monospace;white-space:pre;overflow:auto}
+    .actions,.sizes{display:flex;align-items:end;gap:8px;flex-wrap:wrap}.sizes{margin-top:12px}.sizes label{font-size:.9rem}.sizes input{display:block;width:84px;min-height:44px;margin-top:4px;padding:6px 8px;font:inherit}
+    .actions{margin-top:10px}.status{min-height:26px;margin-top:9px;color:var(--muted)}.status[data-state=error]{color:#9e2b25}.stats{color:var(--muted);font-size:.94rem;margin-top:5px}
+    @media(max-width:630px){.fields,.preview-grid{grid-template-columns:minmax(0,1fr)}.preview-area{min-height:106px;max-height:270px}.preview-area img{max-height:244px}}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Revisión de SVG</h1>
+    <p class="intro">Compara un SVG editable con una referencia y revisa su peso frente a un PNG al mismo tamaño. Los archivos se procesan en este navegador, sin conexión.</p>
+    <div class="fields">
+      <div><label for="svg-file">Archivo SVG</label><input id="svg-file" type="file" accept=".svg,image/svg+xml"></div>
+      <div><label for="ref-file">Referencia visual (opcional)</label><input id="ref-file" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"></div>
+    </div>
+    <div class="preview-grid">
+      <figure class="preview"><figcaption>SVG al tamaño de salida</figcaption><div class="preview-area"><span id="svg-placeholder">Carga un archivo o pega el código del SVG.</span><img id="preview-svg" alt="Vista del SVG editable" hidden></div></figure>
+      <figure class="preview"><figcaption>Referencia al mismo ancho</figcaption><div class="preview-area"><span id="ref-placeholder">Puedes añadir una referencia para comparar.</span><img id="preview-ref" alt="Referencia visual" hidden></div></figure>
+    </div>
+    <div class="editor">
+      <label for="svg-code">Código SVG editable</label>
+      <textarea id="svg-code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="status" placeholder="Pega aquí el código SVG"></textarea>
+      <div class="sizes">
+        <label for="width">Ancho (px)<input id="width" type="number" value="48" min="1" max="2048" step="1"></label>
+        <label for="height">Alto (px)<input id="height" type="number" value="48" min="1" max="2048" step="1"></label>
+        <button id="review" class="primary" type="button">Revisar SVG</button>
+      </div>
+      <div class="actions">
+        <button id="save-svg" type="button" disabled>Descargar SVG</button>
+        <button id="save-png" type="button" disabled>Descargar vista PNG</button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <p id="stats" class="stats" aria-live="polite" hidden></p>
+    </div>
+  </main>
+  <script>
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const code = $('svg-code');
+    const outputWidth = $('width');
+    const outputHeight = $('height');
+    const preview = $('preview-svg');
+    const reference = $('preview-ref');
+    const status = $('status');
+    const stats = $('stats');
+    const svgNamespace = 'http://www.w3.org/2000/svg';
+    const supported = new Set(('svg g defs symbol use path rect circle ellipse line polyline polygon text tspan textPath title desc '
+      + 'linearGradient radialGradient stop clipPath mask pattern marker image style filter feBlend feColorMatrix feComponentTransfer '
+      + 'feFuncR feFuncG feFuncB feFuncA feComposite feConvolveMatrix feDiffuseLighting feDistantLight feDisplacementMap '
+      + 'feDropShadow feFlood feGaussianBlur feMerge feMergeNode feMorphology feOffset fePointLight feSpecularLighting '
+      + 'feSpotLight feTile feTurbulence').split(' '));
+    const vector = new Set('path rect circle ellipse line polyline polygon text'.split(' '));
+    const fragment = /^#[\w.:-]+$/u;
+    const rasterData = /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=\s]+$/i;
+    const number = new Intl.NumberFormat('es-MX');
+    let saved = null;
+    let svgPreviewUrl = '';
+    let referenceUrl = '';
+    let run = 0;
+    let referenceRun = 0;
+    let svgName = 'grafico';
+
+    function message(value, state = 'idle') {
+      status.textContent = value;
+      status.dataset.state = state;
+    }
+
+    function invalidate() {
+      run += 1;
+      saved = null;
+      $('save-svg').disabled = true;
+      $('save-png').disabled = true;
+      stats.hidden = true;
+      stats.removeAttribute('data-svg-bytes');
+      stats.removeAttribute('data-png-bytes');
+      preview.hidden = true;
+      $('svg-placeholder').hidden = false;
+      if (svgPreviewUrl) {
+        preview.removeAttribute('src');
+        URL.revokeObjectURL(svgPreviewUrl);
+        svgPreviewUrl = '';
+      }
+    }
+
+    function checkCss(value) {
+      const css = value.replace(/\/\*[\s\S]*?\*\//g, '');
+      if (/[\\@]/u.test(css) || /(?:expression\s*\(|image-set\s*\(|var\s*\()/i.test(css)) {
+        throw new Error('Usa estilos internos sencillos, sin importaciones ni recursos externos.');
+      }
+      const localCss = css.replace(/url\s*\(\s*(['"]?)(#[\w.:-]+)\1\s*\)/gi, '');
+      if (/url\s*\(/i.test(localCss) || /(?:https?:|file:|data:|\/\/)/i.test(localCss)) {
+        throw new Error('El SVG referencia un recurso externo. Incrústalo localmente antes de revisarlo.');
+      }
+    }
+
+    function parseSvg(source) {
+      if (!source.trim()) throw new Error('Carga un SVG o pega su código.');
+      if (new Blob([source]).size > 4 * 1024 * 1024) throw new Error('El SVG supera los 4 MB de esta vista portátil.');
+      if (/<!DOCTYPE|<!ENTITY/i.test(source)) throw new Error('Retira las declaraciones DOCTYPE o ENTITY antes de revisar el SVG.');
+      const doc = new DOMParser().parseFromString(source, 'image/svg+xml');
+      const root = doc.documentElement;
+      if (!root || root.localName !== 'svg' || (root.namespaceURI && root.namespaceURI !== svgNamespace) || doc.getElementsByTagName('parsererror').length) {
+        throw new Error('El archivo debe ser un SVG con código XML válido.');
+      }
+      if (doc.createTreeWalker(doc, NodeFilter.SHOW_PROCESSING_INSTRUCTION).nextNode()) {
+        throw new Error('Retira las instrucciones de procesamiento externas del SVG.');
+      }
+      const elements = [root, ...root.querySelectorAll('*')];
+      if (elements.length > 12000) throw new Error('La vista portátil admite hasta 12,000 elementos SVG.');
+      let vectors = 0;
+      let rasters = 0;
+      let instances = 0;
+      for (const element of elements) {
+        const name = element.localName;
+        if (!supported.has(name) || (element.namespaceURI && element.namespaceURI !== svgNamespace)) {
+          throw new Error('Elemento SVG no compatible con la revisión local, ' + name + '.');
+        }
+        if (vector.has(name)) vectors += 1;
+        if (name === 'image') rasters += 1;
+        if (name === 'use') instances += 1;
+        if (name === 'style') checkCss(element.textContent);
+        for (const attr of element.attributes) {
+          const key = attr.localName.toLowerCase();
+          const value = attr.value.trim();
+          if (attr.namespaceURI === 'http://www.w3.org/2000/xmlns/') continue;
+          if (key.startsWith('on') || key === 'base' || key === 'src') throw new Error('Retira atributos activos o de conexión antes de usar este SVG.');
+          if (key === 'href') {
+            if (fragment.test(value) || (name === 'image' && rasterData.test(value))) continue;
+            throw new Error('Usa una referencia interna o una imagen ráster incrustada.');
+          }
+          if (key === 'style' || /url\s*\(|[\\@]|https?:|file:|data:/i.test(value)) checkCss(value);
+        }
+      }
+      return { root, vectors, rasters, instances };
+    }
+
+    function readOriginalSize(root) {
+      const view = root.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
+      const px = (attribute) => {
+        const value = root.getAttribute(attribute)?.trim() ?? '';
+        return /^(?:\d+(?:\.\d+)?|\.\d+)(?:px)?$/i.test(value) ? Number.parseFloat(value) : 0;
+      };
+      const validView = view?.length === 4 && view.every(Number.isFinite) && view[2] > 0 && view[3] > 0;
+      return [px('width') || (validView ? view[2] : 0), px('height') || (validView ? view[3] : 0)];
+    }
+
+    function targetSize() {
+      const size = [outputWidth.valueAsNumber, outputHeight.valueAsNumber];
+      if (!size.every((value) => Number.isInteger(value) && value >= 1 && value <= 2048)) {
+        throw new Error('El ancho y el alto deben ser números enteros entre 1 y 2048 px.');
+      }
+      return size;
+    }
+
+    function loadedImage(url) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('El navegador no pudo abrir la imagen.')); 
+        image.src = url;
+      });
+    }
+
+    async function review() {
+      invalidate();
+      const currentRun = run;
+      message('Preparando la vista y el PNG de comparación…');
+      let url = '';
+      try {
+        const source = code.value;
+        const parsed = parseSvg(source);
+        const [width, height] = targetSize();
+        const renderRoot = parsed.root.cloneNode(true);
+        const [nativeWidth, nativeHeight] = readOriginalSize(parsed.root);
+        if (!renderRoot.hasAttribute('viewBox')) {
+          if (!nativeWidth || !nativeHeight) throw new Error('Añade un viewBox o un ancho y un alto en píxeles al SVG.');
+          renderRoot.setAttribute('viewBox', `0 0 ${nativeWidth} ${nativeHeight}`);
+        }
+        if (!renderRoot.namespaceURI) renderRoot.setAttribute('xmlns', svgNamespace);
+        renderRoot.setAttribute('width', width);
+        renderRoot.setAttribute('height', height);
+        url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(renderRoot)], { type: 'image/svg+xml' }));
+        const image = await loadedImage(url);
+        if (run !== currentRun) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('El navegador no ofrece una vista PNG en esta sesión.');
+        context.drawImage(image, 0, 0, width, height);
+        const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (run !== currentRun) return;
+        if (!png) throw new Error('El navegador no pudo guardar la vista PNG.');
+        const svg = new Blob([source], { type: 'image/svg+xml' });
+        saved = { svg, png };
+        svgPreviewUrl = url;
+        url = '';
+        preview.width = width;
+        preview.src = svgPreviewUrl;
+        preview.hidden = false;
+        $('svg-placeholder').hidden = true;
+        reference.width = width;
+        stats.dataset.svgBytes = svg.size;
+        stats.dataset.pngBytes = png.size;
+        stats.textContent = `${number.format(parsed.vectors)} formas o textos · ${number.format(parsed.instances)} referencias internas · ${number.format(parsed.rasters)} imágenes ráster · SVG ${number.format(svg.size)} bytes · PNG ${number.format(png.size)} bytes`;
+        stats.hidden = false;
+        $('save-svg').disabled = false;
+        $('save-png').disabled = false;
+        message(svg.size <= png.size ? 'Vista preparada. El SVG pesa igual o menos que el PNG.' : 'Vista preparada. El SVG pesa más que el PNG a este tamaño.', 'ready');
+      } catch (error) {
+        if (run === currentRun) message(error.message || 'No se completó la revisión.', 'error');
+      } finally {
+        if (url) URL.revokeObjectURL(url);
+      }
+    }
+
+    $('svg-file').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      invalidate();
+      const currentRun = run;
+      if (file.size > 4 * 1024 * 1024) return message('El archivo supera los 4 MB de esta vista portátil.', 'error');
+      try {
+        const source = await file.text();
+        if (run !== currentRun) return;
+        code.value = source;
+        svgName = file.name.replace(/\.[^.]+$/, '').replace(/[^\p{L}\p{N}_ -]/gu, '').trim() || 'grafico';
+        const { root } = parseSvg(source);
+        const [width, height] = readOriginalSize(root);
+        if (width && height) {
+          const ratio = Math.min(1, 2048 / Math.max(width, height));
+          outputWidth.value = Math.max(1, Math.round(width * ratio));
+          outputHeight.value = Math.max(1, Math.round(height * ratio));
+        }
+        await review();
+      } catch (error) {
+        if (run === currentRun) message(error.message || 'No se pudo abrir el SVG.', 'error');
+      }
+    });
+
+    $('ref-file').addEventListener('change', async (event) => {
+      const selected = ++referenceRun;
+      const file = event.target.files[0];
+      if (referenceUrl) URL.revokeObjectURL(referenceUrl);
+      referenceUrl = '';
+      reference.removeAttribute('src');
+      reference.hidden = true;
+      const placeholder = $('ref-placeholder');
+      placeholder.hidden = false;
+      placeholder.textContent = 'Puedes añadir una referencia para comparar.';
+      if (!file) return;
+      const format = file.name.match(/\.(png|jpe?g|webp)$/i)?.[1].toLowerCase();
+      if (!format || file.size > 12 * 1024 * 1024) {
+        placeholder.textContent = 'Selecciona una referencia PNG, JPEG o WebP de hasta 12 MB.';
+        return;
+      }
+      const url = URL.createObjectURL(new Blob([file], { type: 'image/' + (format === 'jpg' ? 'jpeg' : format) }));
+      try {
+        await loadedImage(url);
+        if (selected !== referenceRun) { URL.revokeObjectURL(url); return; }
+        referenceUrl = url;
+        reference.width = Math.max(1, Math.min(2048, outputWidth.valueAsNumber || 48));
+        reference.src = url;
+        reference.hidden = false;
+        placeholder.hidden = true;
+      } catch {
+        URL.revokeObjectURL(url);
+        if (selected === referenceRun) placeholder.textContent = 'No se pudo abrir la referencia visual.';
+      }
+    });
+
+    function download(blob, filename) {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+
+    function updatePending() {
+      invalidate();
+      message('Selecciona Revisar SVG para actualizar la vista.');
+    }
+
+    code.addEventListener('input', updatePending);
+    outputWidth.addEventListener('input', updatePending);
+    outputHeight.addEventListener('input', updatePending);
+    $('review').addEventListener('click', review);
+    $('save-svg').addEventListener('click', () => download(saved?.svg, svgName + '-editable.svg'));
+    $('save-png').addEventListener('click', () => download(saved?.png, svgName + '-vista.png'));
+  </script>
+</body>
+</html>
