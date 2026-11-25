@@ -9,6 +9,16 @@ Esta adaptación conserva el procedimiento original. Las menciones a ChatGPT, Co
 
 Conserva la dirección por escena y la prueba de render. Usa FFmpeg, Node.js, Python, Blender, Manim o Remotion únicamente si están instalados y su uso es gratuito y permitido. Tesseract y Remote de Codex no se presuponen disponibles. Si Gemini chat no puede renderizar video, entrega un guion técnico o código editable y marca el render PENDIENTE; no simules haberlo generado.
 
+**Mapeo operativo en Antigravity (Windows y Linux, cero cargos adicionales):**
+- **Entorno local gratuito y portátil:**
+  - Coloca `node` (`>= 18`, recomendado `>= 24.10` LTS), `ffmpeg` y `ffprobe` (con `libx264` y `aac`) en `PATH` o usa `AUDIOVISUAL_FFMPEG` para señalar el ejecutable local.
+  - Cuando se preparen runtimes opcionales fuera de la caché del complemento (por ejemplo mediante `adaptaciones/instalar-antigravity.sh` en Linux/macOS o `adaptaciones/instalar-antigravity.ps1` en Windows en `~/.gemini/antigravity/plugin_data/creacion-audiovisual/runtime/` o `%USERPROFILE%\.gemini\antigravity\plugin_data\creacion-audiovisual\runtime\`):
+    - **Playwright + Chromium WebGL2 (`exportar-rebotes.mjs`):** configura `AUDIOVISUAL_PLAYWRIGHT` (y `AUDIOVISUAL_CHROMIUM` si se usa un binario concreto). En Linux sin `sudo`, añade las bibliotecas de Chromium a `LD_LIBRARY_PATH` si faltan en el sistema.
+    - **Remotion (`4.0.537`):** copia `assets/remotion-starter` a una carpeta de trabajo fuera del complemento; usa `--gl=swangle` si no hay aceleración GPU y `--browser-executable` si reutilizas un `chrome-headless-shell` local.
+    - **Python multimedia:** `moviepy>=2.0.0,<3` y `faster-whisper>=1.2.0,<2` (requiere carpeta de modelo local) en el entorno virtual local; **Manim Community** (`>= 0.18`, probado en `v0.22.1`) cuando esté instalado.
+- **Validación y scripts con o sin Node.js:** usa `node scripts/validate-plan.mjs <plan.json>` (o `python3 scripts/validate-plan.py <plan.json>` / `python scripts/validate-plan.py <plan.json>` como respaldo sin dependencias). Si faltan modelos locales de Whisper/DeepFilterNet o un motor opcional, entrega el proyecto editable y marca esa etapa como `PENDIENTE` sin usar servicios de pago.
+- **Imágenes de apoyo, vista previa y subagentes:** para ilustraciones o referencias visuales incluidas en la cuenta sin cargos adicionales, usa el subagente `image-generator` en lugar de GPT Images. Para previsualizar piezas HTML/SVG/WebGL2, usa el subagente `browser` o la habilidad `generative_ui`. Para doble auditoría sin cadenas recursivas, usa `invoke_subagent` nativo de Antigravity.
+
 **Recursos pendientes:** Faltan la imagen original del complemento y el paquete wheel de Sprite Gen; no uses Sprite Gen sin obtenerlo de una fuente autorizada. La versión original del complemento no se confirmó.
 
 

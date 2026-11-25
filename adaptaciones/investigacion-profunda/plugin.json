@@ -1,11 +1,17 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "investigacion-profunda",
+  "displayName": "Investigación profunda",
   "version": "0.1.0",
   "description": "Investigación documental, verificación contextual, citas y comprobación independiente de fuentes.",
-  "displayName": "Investigación profunda",
+  "suggestedPrompts": [
+    "Investiga y verifica con fuentes primarias un tema o afirmación concreta",
+    "Audita un documento con citas y separa hechos comprobados de inferencias",
+    "Contrasta registros o documentos relacionados sin mezclar entidades ni fechas"
+  ],
   "author": {
     "name": "Raul"
   },
-  "repository": "https://github.com/raulmormen75/Complementos-IA"
+  "repository": "https://github.com/raulmormen75/Complementos-IA",
+  "keywords": ["investigacion", "verificacion", "fuentes", "citas", "auditoria"]
 }

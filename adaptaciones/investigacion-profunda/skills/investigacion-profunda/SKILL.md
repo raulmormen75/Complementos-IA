@@ -9,6 +9,11 @@ Esta adaptación conserva el procedimiento original. Las menciones a ChatGPT, Co
 
 Usa búsqueda y apertura de fuentes originales si están disponibles. Si no hay navegador, archivos o revisión visual de páginas, marca los datos afectados NO CONFIRMADO. Si no existen subagentes, aplica pasadas separadas y declara la falta de independencia. Gemini Apps no integra actualmente la función Deep Research con Skills; usa únicamente las herramientas de búsqueda accesibles en la sesión. Mantén el protocolo de verificación y sus límites.
 
+**Mapeo operativo en Antigravity:**
+- **Búsqueda y apertura de fuentes:** usa `search_web` y lectura directa (`curl`/Python o `read_file` para documentos locales). **No** delegues búsquedas web al subagente integrado `research`, porque en Antigravity se ejecuta en un sandbox sin acceso a red.
+- **Comprobación visual de páginas, PDFs y ligas (sección 7.1):** delega la inspección visual en el subagente integrado `browser` (`invoke_subagent` con `TypeName: "browser"`) cuando esté disponible.
+- **Comprobación independiente y validación de ausencia:** usa `invoke_subagent` (con `TypeName: "self"`, o un subagente definido con `define_subagent` y `EnableWriteTools: false` para auditoría de archivos locales) entregando únicamente la pregunta, las fuentes y los artefactos sin la conclusión esperada.
+
 **Recursos pendientes:** Se recuperaron cinco archivos de la habilidad; no se confirmó el manifiesto original ni la versión del complemento. El caso de aceptación omite una ruta de trabajo privada.
 
 

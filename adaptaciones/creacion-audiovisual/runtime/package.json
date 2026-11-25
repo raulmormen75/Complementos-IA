@@ -1,0 +1,9 @@
+{
+  "name": "creacion-audiovisual-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dependencia Playwright local gratuita y versión exacta verificada para Creación audiovisual (sin cargos adicionales).",
+  "dependencies": {
+    "playwright": "1.65.1"
+  }
+}

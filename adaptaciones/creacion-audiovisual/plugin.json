@@ -1,11 +1,17 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "creacion-audiovisual",
+  "displayName": "Creación audiovisual",
   "version": "0.1.0",
   "description": "Dirección audiovisual, animación, montaje y sonido con flujos editables y herramientas locales.",
-  "displayName": "Creación audiovisual",
+  "suggestedPrompts": [
+    "Diseña el guion y plan de escenas en JSON para un video corto de datos",
+    "Prepara una escena animada editable en HTML/SVG o Three.js sin cargos adicionales",
+    "Revisa una composición audiovisual existente y sugiere mejoras de montaje y sonido"
+  ],
   "author": {
     "name": "Raul"
   },
-  "repository": "https://github.com/raulmormen75/Complementos-IA"
+  "repository": "https://github.com/raulmormen75/Complementos-IA",
+  "keywords": ["audiovisual", "video", "animacion", "remotion", "ffmpeg", "svg"]
 }

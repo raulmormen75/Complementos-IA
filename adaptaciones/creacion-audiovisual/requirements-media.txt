@@ -1,0 +1,11 @@
+# Dependencias opcionales gratuitas (MIT / Apache-2.0 / BSD) con versiones exactas verificadas para preparar-medios.py
+# Compatible con Python 3.11 a 3.14 en Windows y Linux (Python 3.15+ aún carece de wheels para pillow<12 y onnxruntime<2).
+moviepy==2.2.1
+faster-whisper==1.2.1
+pillow==11.3.0
+numpy==2.5.5
+ctranslate2==4.9.1
+onnxruntime==1.32.0
+av==19.0.2
+imageio==2.38.2
+imageio-ffmpeg==0.8.1
